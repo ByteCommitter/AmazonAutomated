@@ -117,18 +117,7 @@ class TestAppium(unittest.TestCase):
             print("Could not verify home page")
             return False
 
-    def identify_element(self, element_description):
-        """
-        Utility function to help identify elements with Appium Inspector.
-        Prints useful information about how to find elements.
-        """
-        print(f"Looking for: {element_description}")
-        print("Tips for Appium Inspector:")
-        print("1. Use the 'Refresh Source' button to get the latest UI")
-        print("2. Try searching for text with the search box")
-        print("3. Check element attributes like 'resource-id', 'text', or 'content-desc'")
-        print("4. For complex elements, try using XPath with multiple attributes")
-        return
+    
     
     def print_page_source(self):
         """Print a segment of the current page source for debugging"""
