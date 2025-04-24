@@ -17,41 +17,55 @@ except ImportError:
 class SearchLoadTime(unittest.TestCase):
     
     def setUp(self):
+        # Set Chrome options
         options = ChromeOptions()
         options.add_argument("--disable-blink-features=AutomationControlled")
         options.add_argument("--start-maximized")
         
+        # Initialize the Chrome WebDriver
         service = ChromeService(ChromeDriverManager().install())
         self.driver = webdriver.Chrome(service=service, options=options)
         self.wait = WebDriverWait(self.driver, 10)
     
     def test_amazon_search_load_time(self):
+        """Measure load time from Amazon homepage to search results"""
         driver = self.driver
         
-        print("Opening Amazon website...")
+        # Start timing from navigating to Amazon
+        print("Navigating to Amazon.in...")
+        
+        
+        # Navigate to Amazon
         driver.get("https://www.amazon.in")
         
+        # Wait for search box to be available
         search_box = self.wait.until(EC.presence_of_element_located((By.ID, "twotabsearchtextbox")))
         start_time = time.time()
-        
-        print("Searching for wireless headphones...")
+        # Perform search
+        print("Searching for wireless headphones...Started time")
         search_box.clear()
         search_box.send_keys("wireless headphones")
         search_box.send_keys(Keys.RETURN)
         
+        # Wait for search results to load completely
         self.wait.until(EC.title_contains("wireless headphones"))
         self.wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "div[data-component-type='s-search-result']")))
         
+        # End timing after search results are loaded
         end_time = time.time()
         total_load_time = end_time - start_time
         
-        print(f"\nSearch completed in {total_load_time:.2f} seconds")
+        # Print the timing results
+        print("\n----- AMAZON SEARCH LOAD TIME -----")
+        print(f"Time from Amazon homepage to search results: {total_load_time:.2f} seconds")
+        print("-----------------------------------\n")
         
+        # Verify search was successful
         self.assertIn("wireless headphones", driver.title.lower())
     
     def tearDown(self):
         self.driver.quit()
-        print("Browser closed")
+        print("Test completed")
 
 
 if __name__ == "__main__":
