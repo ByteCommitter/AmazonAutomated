@@ -7,6 +7,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import ElementClickInterceptedException, TimeoutException
 import time
+import os
 
 # Function to get first product details
 def get_first_product_details(driver, wait):
@@ -86,8 +87,8 @@ def get_first_product_details(driver, wait):
         print("--------------------------------\n")
         
         # For debugging: save screenshot
-        driver.save_screenshot("first_product.png")
-        print("Screenshot saved as 'first_product.png'")
+        # driver.save_screenshot("highest_rated_product.png")
+        # print("Screenshot saved as 'highest_rated_product.png'")
         
     except Exception as e:
         print(f"Error extracting product information: {e}")
@@ -97,15 +98,22 @@ def get_first_product_details(driver, wait):
 # Set Chrome options
 options = ChromeOptions()
 # options.headless = True  # Uncomment if you want headless mode
+options.add_argument("--disable-blink-features=AutomationControlled")  # Hide automation
+options.add_argument("--start-maximized")  # Start maximized
 
-# Set chromedriver path explicitly
-service = ChromeService("/usr/bin/chromedriver")
+# Use WebDriver Manager to automatically get the right ChromeDriver
+# First install it with: pip install webdriver-manager
+try:
+    from webdriver_manager.chrome import ChromeDriverManager
+    # Initialize the Chrome WebDriver with WebDriver Manager
+    service = ChromeService(ChromeDriverManager().install())
+    driver = webdriver.Chrome(service=service, options=options)
+except ImportError:
+    print("WebDriver Manager not installed. Please run: pip install webdriver-manager")
+    print("Then run this script again.")
+    exit(1)
 
-# Initialize the Chrome WebDriver
-driver = webdriver.Chrome(service=service, options=options)
-
-
-#task a for headphones
+# Main execution
 try:
     # Visit Amazon.in
     print("Navigating to Amazon.in...")
@@ -124,74 +132,55 @@ try:
     wait.until(EC.title_contains("wireless headphones"))
     print(f"Search results page title: {driver.title}")
     
-    #task b sort by price and on lowest to highest item
-    print("Sorting by price: Low to High...")
-    
-    # Use a longer wait for the sort dropdown to be fully loaded
-    #time.sleep(2)
+    # Sort by Average Customer Review (highest rated first)
+    print("Sorting by Average Customer Review...")
     
     try:
-        sort_dropdown = None
-        
-        # Try multiple selectors to find the dropdown
-        # selectors = [
-        #     (By.CSS_SELECTOR, "[aria-label='Sort by:']"),
-        #     (By.CSS_SELECTOR, ".a-dropdown-container .a-button-dropdown"),
-        
+        # Find and click the sort dropdown
         sort_dropdown = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "[aria-label='Sort by:']")))
-
-        if sort_dropdown:
-            # Use JavaScript to safely click the element
-            driver.execute_script("arguments[0].click();", sort_dropdown)
-            print("Clicked sort dropdown using JavaScript")
-            
-            # Wait for dropdown options to appear
-            time.sleep(1)
-            
-            # Try to find and click the "Price: Low to High" option
-            # selectors = [
-            #     (By.XPATH, "//a[contains(text(), 'Price: Low to High')]"),
-            #     (By.XPATH, "//a[contains(@id, 's-result-sort-select') and contains(text(), 'Price: Low to High')]"),
-            #
-            price_option = wait.until(EC.presence_of_element_located((By.XPATH, "//a[contains(@id, 's-result-sort-select') and contains(text(), 'Price: Low to High')]")))
-            driver.execute_script("arguments[0].click();", price_option)
-            print("Clicked price option using JavaScript")
-
-           
-                    
-            # Wait for sorting to complete
-            # print("Waiting for sorting to complete...")
-            time.sleep(5)
-            # print("Sorting should be complete now")
-            
-            # # Keep the browser open to see the results
-            # print("Keeping browser open for 15 seconds...")
-            #time.sleep(15)
-        else:
-            # Alternative method: use the direct URL with sorting parameter
-            print("Could not find sort dropdown, using direct URL with sorting parameter...")
-            # current_url = driver.current_url
-            # if "?" in current_url:
-            #     sorted_url = current_url + "&s=price-asc-rank"
-            # else:
-            #     sorted_url = current_url + "?s=price-asc-rank"
-            
-            # driver.get(sorted_url)
-            # print("Navigated to URL with sort parameter")
-            # time.sleep(15)
+        
+        # Use JavaScript to safely click the element
+        driver.execute_script("arguments[0].click();", sort_dropdown)
+        print("Clicked sort dropdown using JavaScript")
+        
+        # Wait for dropdown options to appear
+        time.sleep(1)
+        
+        # Find and click the "Avg. Customer Review" option
+        review_option = wait.until(EC.presence_of_element_located((By.XPATH, 
+            "//a[contains(@id, 's-result-sort-select') and contains(text(), 'Avg. Customer Review')]")))
+        driver.execute_script("arguments[0].click();", review_option)
+        print("Clicked Avg. Customer Review option using JavaScript")
+        
+        # Wait for sorting to complete
+        print("Waiting for sorting to complete...")
+        time.sleep(5)
     
     except Exception as e:
-        print(f"Error during sorting: {e}")
+        print(f"Error during sorting by review: {e}")
+        # Fallback method: Use direct URL with sorting parameter
+        print("Using fallback method: direct URL with sorting parameter...")
+        current_url = driver.current_url
+        if "?" in current_url:
+            sorted_url = current_url + "&s=review-rank"
+        else:
+            sorted_url = current_url + "?s=review-rank"
+        
+        driver.get(sorted_url)
+        print("Navigated to URL with sort parameter")
+        time.sleep(5)
     
-    
-    # Get the product name and price
+    # Get the first product (highest rated) details
     get_first_product_details(driver, wait)
 
 except Exception as e:
     print(f"An error occurred: {e}")
 
-
-
-
-
-
+finally:
+    # Keep the browser open for a few more seconds to see results
+    time.sleep(5)
+    
+    # Close the browser
+    print("Closing browser...")
+    driver.quit()
+    print("Script execution completed")

@@ -108,9 +108,6 @@ class AmazonAddToCartTest(unittest.TestCase):
         # Sort by Average Customer Review (highest rated first)
         print("Sorting by Average Customer Review...")
         
-        # START TIMING THE FILTER TO PRODUCT DETAILS OPERATION
-        start_time = time.time()
-        
         try:
             # Find and click the sort dropdown
             sort_dropdown = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "[aria-label='Sort by:']")))
@@ -154,17 +151,134 @@ class AmazonAddToCartTest(unittest.TestCase):
         # Get product details
         product_name, product_price = self.get_product_details(first_product)
         
-        # END TIMING THE FILTER TO PRODUCT DETAILS OPERATION
-        end_time = time.time()
-        filter_to_details_time = end_time - start_time
-        
         # Print the results
         print("\n----- FIRST PRODUCT DETAILS -----")
         print(f"Product Name: {product_name}")
         print(f"Product Price: {product_price}")
-        print(f"Time from applying filter to getting product details: {filter_to_details_time:.2f} seconds")
         print("--------------------------------\n")
-       
+        
+        # START TIMING THE ADD TO CART OPERATION
+        print("Starting Add to Cart timing measurement...")
+        start_time = time.time()
+        
+        # Look for Add to Cart button
+        add_to_cart_selectors = [
+            "button[name='submit.addToCart']",
+            "button[aria-label='Add to cart']",
+            "input[name='submit.add-to-cart']",
+            ".a-button-text[type='button']",
+            "[id*='add-to-cart']",
+            ".a-button-input[value*='Add to Cart']"
+        ]
+        
+        add_to_cart_button = None
+        for selector in add_to_cart_selectors:
+            try:
+                elements = first_product.find_elements(By.CSS_SELECTOR, selector)
+                for element in elements:
+                    if element.is_displayed():
+                        add_to_cart_button = element
+                        print(f"Found Add to Cart button using selector: {selector}")
+                        break
+                if add_to_cart_button:
+                    break
+            except Exception as button_error:
+                print(f"Error with selector {selector}: {button_error}")
+                continue
+        
+        # If button not found within the product container, try looking in the entire page
+        if not add_to_cart_button:
+            print("Button not found in product container, searching in entire page...")
+            for selector in add_to_cart_selectors:
+                try:
+                    elements = driver.find_elements(By.CSS_SELECTOR, selector)
+                    for element in elements:
+                        if element.is_displayed():
+                            add_to_cart_button = element
+                            print(f"Found Add to Cart button using selector: {selector}")
+                            break
+                    if add_to_cart_button:
+                        break
+                except Exception:
+                    continue
+        
+        success = False
+        if add_to_cart_button:
+            # Scroll to make button visible if needed
+            driver.execute_script("arguments[0].scrollIntoView(true);", add_to_cart_button)
+            time.sleep(1)
+            
+            # Click the Add to Cart button
+            driver.execute_script("arguments[0].click();", add_to_cart_button)
+            print("Clicked Add to Cart button")
+            
+            # Wait for confirmation using cart count
+            try:
+                # First check cart count before adding
+                cart_count_before = "0"
+                try:
+                    cart_count_element = driver.find_element(By.ID, "nav-cart-count")
+                    if cart_count_element.is_displayed():
+                        cart_count_before = cart_count_element.text
+                        print(f"Current cart count: {cart_count_before}")
+                except:
+                    print("Could not find initial cart count")
+                
+                # Wait specifically for the cart count to change
+                try:
+                    # Function to check if cart count has changed
+                    def cart_count_changed(driver):
+                        try:
+                            new_count = driver.find_element(By.ID, "nav-cart-count").text
+                            return new_count != cart_count_before
+                        except:
+                            return False
+                    
+                    # Wait up to 10 seconds for cart count to change
+                    wait.until(cart_count_changed)
+                    
+                    # Get the new count
+                    new_cart_count = driver.find_element(By.ID, "nav-cart-count").text
+                    print(f"Cart count changed from {cart_count_before} to {new_cart_count}")
+                    success = True
+                    
+                except TimeoutException:
+                    print("Cart count didn't change. Checking other confirmation elements...")
+                    # Fall back to checking other confirmation elements
+                    confirmation_selectors = [
+                        "#huc-v2-order-row-confirm-text",
+                        "#NATC_SMART_WAGON_CONF_MSG_SUCCESS", 
+                        "#sw-atc-confirmation",
+                        "#attachDisplayAddBaseAlert"
+                    ]
+                    
+                    for conf_selector in confirmation_selectors:
+                        try:
+                            wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, conf_selector)))
+                            success = True
+                            print(f"Confirmation found with: {conf_selector}")
+                            break
+                        except:
+                            continue
+                
+            except Exception as e:
+                print(f"Error checking confirmation: {e}")
+        
+        # Calculate time taken
+        end_time = time.time()
+        add_cart_time = end_time - start_time
+        
+        # Print the timing results
+        print(f"\nAmazon.in Add to Cart Time:")
+        print(f"Time to Add to Cart: {add_cart_time:.2f} seconds")
+        if success:
+            print("Status: Product successfully added to cart!")
+        else:
+            print("Status: Could not verify if product was added to cart")
+        print("---------------------------------------")
+        
+        # Assert that operation completed within reasonable time
+        self.assertLess(add_cart_time, 30, "Add to cart time exceeded 30 seconds!")
     
     def tearDown(self):        
         print("Closing browser...")        
