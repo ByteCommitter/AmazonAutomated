@@ -121,7 +121,7 @@ class AmazonLowestPriceSearch(unittest.TestCase):
             if sort_dropdown:
                 driver.execute_script("arguments[0].click();", sort_dropdown)
                 
-                time.sleep(1)
+                #time.sleep(1)
                 
                 start_time = time.time()
                 self.filter_start_time = time.time()
@@ -136,7 +136,7 @@ class AmazonLowestPriceSearch(unittest.TestCase):
                 load_time = end_time - start_time
                 print(f"Filter applied in {load_time:.2f} seconds")
                 
-                time.sleep(2)
+                #time.sleep(2)
                 
         except Exception as e:
             print(f"Error during sorting: {e}")
@@ -150,9 +150,3 @@ class AmazonLowestPriceSearch(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-
-
-
-
-
-

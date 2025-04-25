@@ -46,7 +46,7 @@ class AmazonAddToCartTest(unittest.TestCase):
                 if elements:
                     product_name = elements[0].text.strip()
                     if product_name:
-                        print(f"Found product name: {product_name}")
+                        #print(f"Found product name: {product_name}")
                         break
             except Exception:
                 continue
@@ -71,7 +71,7 @@ class AmazonAddToCartTest(unittest.TestCase):
                         if selector == ".a-price-whole":
                             product_price = "₹" + product_price
                     if product_price:
-                        print(f"Found price: {product_price}")
+                        #print(f"Found price: {product_price}")
                         break
             except Exception:
                 continue
@@ -103,23 +103,20 @@ class AmazonAddToCartTest(unittest.TestCase):
             sort_dropdown = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "[aria-label='Sort by:']")))
             driver.execute_script("arguments[0].click();", sort_dropdown)
             
-            time.sleep(1)
+            #time.sleep(1)
             
             review_option = wait.until(EC.presence_of_element_located((By.XPATH, 
                 "//a[contains(@id, 's-result-sort-select') and contains(text(), 'Avg. Customer Review')]")))
             driver.execute_script("arguments[0].click();", review_option)
             
-            time.sleep(2)
+            #time.sleep(2)
         
         except Exception as e:
-            print("Couldn't use dropdown, using direct sort URL instead")
-            current_url = driver.current_url
-            sorted_url = current_url + ("&" if "?" in current_url else "?") + "s=review-rank"
-            driver.get(sorted_url)
-            time.sleep(5)
+            print("Couldn't use dropdown")
+            
         
         wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "div[data-component-type='s-search-result']")))
-        time.sleep(2)
+        #time.sleep(2)
         first_product = driver.find_element(By.CSS_SELECTOR, "div[data-component-type='s-search-result']")
         
         product_name, product_price = self.get_product_details(first_product)
