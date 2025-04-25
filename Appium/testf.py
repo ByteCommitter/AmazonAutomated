@@ -46,7 +46,7 @@ class TestAppium(unittest.TestCase):
     def open_app(self):
         """Open the app, select English language, and skip sign in"""
         # Wait for initial screen to load
-        time.sleep(3)
+        #time.sleep(3)
         
         # Handle language selection first
         try:
@@ -83,7 +83,7 @@ class TestAppium(unittest.TestCase):
         try:
             language_continue = self.driver.find_element(AppiumBy.ID, 'in.amazon.mShop.android.shopping:id/continue_button')
             language_continue.click()
-            time.sleep(2)
+            #time.sleep(2)
             print("Clicked continue after selecting language")
         except:
             print("Could not find continue button after language selection")
@@ -109,7 +109,7 @@ class TestAppium(unittest.TestCase):
                     continue_button = self.driver.find_element(AppiumBy.ID, 'in.amazon.mShop.android.shopping:id/sso_continue')
                     continue_button.click()
                     # Then look for skip options on the next screen
-                    time.sleep(2)
+                    #time.sleep(2)
                     try:
                         skip_button = self.driver.find_element(AppiumBy.XPATH, 
                             '//android.widget.Button[contains(@text, "Continue as guest") or contains(@text, "Skip")]')
@@ -118,7 +118,7 @@ class TestAppium(unittest.TestCase):
                         print("Continuing without explicit skip")
         
         # Wait for home page to load after skipping sign-in
-        time.sleep(3)
+        #time.sleep(3)
         print("App successfully opened with English language and sign-in skipped")
         
         # Verify we're on the home page
@@ -145,7 +145,7 @@ class TestAppium(unittest.TestCase):
         print("Search completed without signing in")
         
         # Wait for search results to load
-        time.sleep(3)
+        #time.sleep(3)
         
         # Verify we're on the search results page (optional)
         try:
@@ -161,7 +161,7 @@ class TestAppium(unittest.TestCase):
         start_time = time.time()
         print("Starting app loading measurement...")
         
-        time.sleep(3)  # Wait for initial screen
+        #time.sleep(3)  # Wait for initial screen
         phase1_end_time = time.time()
         phase1_duration = phase1_end_time - start_time
         print(f"Phase 1 - App startup time: {phase1_duration:.2f} seconds")
@@ -204,7 +204,7 @@ class TestAppium(unittest.TestCase):
         try:
             language_continue = self.driver.find_element(AppiumBy.ID, 'in.amazon.mShop.android.shopping:id/continue_button')
             language_continue.click()
-            time.sleep(2)
+            #time.sleep(2)
             print("Clicked continue after selecting language")
         except:
             print("Could not find continue button after language selection")
@@ -233,7 +233,7 @@ class TestAppium(unittest.TestCase):
                     continue_button = self.driver.find_element(AppiumBy.ID, 'in.amazon.mShop.android.shopping:id/sso_continue')
                     continue_button.click()
                     # Then look for skip options on the next screen
-                    time.sleep(2)
+                    #time.sleep(2)
                     try:
                         skip_button = self.driver.find_element(AppiumBy.XPATH, 
                             '//android.widget.Button[contains(@text, "Continue as guest") or contains(@text, "Skip")]')
@@ -250,7 +250,7 @@ class TestAppium(unittest.TestCase):
         phase3_start_time = time.time()
         
         # Wait for home page to load
-        time.sleep(5)
+        #time.sleep(5)
         
         # Verify we're on the home page
         try:

@@ -117,18 +117,7 @@ class TestAppium(unittest.TestCase):
             print("Could not verify home page")
             return False
 
-    def identify_element(self, element_description):
-        """
-        Utility function to help identify elements with Appium Inspector.
-        Prints useful information about how to find elements.
-        """
-        print(f"Looking for: {element_description}")
-        print("Tips for Appium Inspector:")
-        print("1. Use the 'Refresh Source' button to get the latest UI")
-        print("2. Try searching for text with the search box")
-        print("3. Check element attributes like 'resource-id', 'text', or 'content-desc'")
-        print("4. For complex elements, try using XPath with multiple attributes")
-        return
+   
     
     def print_page_source(self):
         """Print a segment of the current page source for debugging"""
@@ -317,6 +306,160 @@ class TestAppium(unittest.TestCase):
             print("---------------------------------")
             return product_info
 
+    def check_if_added_to_cart(self):
+        """Check if a product was successfully added to cart"""
+        try:
+            # Look for confirmation elements
+            confirmations = self.driver.find_elements(AppiumBy.XPATH, 
+                '//android.widget.TextView[contains(@text, "Added to") or contains(@text, "added to cart") or contains(@text, "Cart")]')
+            
+            if confirmations and len(confirmations) > 0:
+                return True
+        except Exception:
+            pass
+        
+        return False
+    
+    def add_to_cart_from_search_results(self, container):
+        """
+        Add a product to cart directly from search results using the specific button properties
+        provided from Appium Inspector.
+        
+        Args:
+            container: The product container element from search results
+        
+        Returns:
+            bool: True if successfully added to cart, False otherwise
+        """
+        # Minimize print statements as requested
+        add_to_cart_found = False
+        
+        # STRATEGY 1: Direct use of resource-id from the provided button data
+        try:
+            add_to_cart = container.find_element(AppiumBy.ID, 'a-autoid-21-announce')
+            add_to_cart.click()
+            add_to_cart_found = True
+        except Exception:
+            pass
+            
+        # STRATEGY 2: Finding button by text attribute (from provided data)
+        if not add_to_cart_found:
+            try:
+                add_to_cart = container.find_element(AppiumBy.XPATH, 
+                    './/android.widget.Button[@text="Add to cart"]')
+                add_to_cart.click()
+                add_to_cart_found = True
+            except Exception:
+                pass
+                
+        # STRATEGY 3: Using the bounds data to find elements in that area
+        if not add_to_cart_found:
+            try:
+                # Using the bounds from provided button data: [464,2050][1039,2142]
+                buttons_in_area = self.driver.find_elements(AppiumBy.XPATH,
+                    '//android.widget.Button[@clickable="true"]')
+                
+                for button in buttons_in_area:
+                    try:
+                        if button.text and "add to cart" in button.text.lower():
+                            button.click()
+                            add_to_cart_found = True
+                            break
+                    except:
+                        continue
+            except Exception:
+                pass
+                
+        # STRATEGY 4: Try finding button near the product price
+        if not add_to_cart_found:
+            try:
+                price_elements = container.find_elements(AppiumBy.XPATH,
+                    './/android.widget.TextView[contains(@text, "₹")]')
+                
+                if price_elements and len(price_elements) > 0:
+                    price_container = price_elements[0]
+                    # Try to find buttons near the price
+                    parent = price_container
+                    for _ in range(3): 
+                        try:
+                            parent = parent.find_element(AppiumBy.XPATH, "./..")
+                            buttons = parent.find_elements(AppiumBy.CLASS_NAME, "android.widget.Button")
+                            for button in buttons:
+                                if button.text and "add to cart" in button.text.lower():
+                                    button.click()
+                                    add_to_cart_found = True
+                                    break
+                        except:
+                            continue
+                        
+                        if add_to_cart_found:
+                            break
+            except Exception:
+                pass
+                
+        # Wait for cart update
+        if add_to_cart_found:
+            time.sleep(2)
+            
+            # Check for success indicators
+            return self.check_if_added_to_cart() or add_to_cart_found
+        
+        return False
+        
+    def add_to_cart_from_product_page(self):
+        """Add the current product to cart from product details page"""
+        print("\nAttempting to add product to cart from product page...")
+        
+        # Scroll down to make sure Add to Cart button is visible
+        screen_size = self.driver.get_window_size()
+        width = screen_size['width']
+        height = screen_size['height']
+        self.driver.swipe(width // 2, height * 3 // 4, width // 2, height // 4, 600)
+        time.sleep(1)
+        
+        add_to_cart_found = False
+        
+        # STRATEGY 1: Try using resource-id
+        try:
+            add_to_cart = self.driver.find_element(AppiumBy.ID, 'a-autoid-21-announce')
+            add_to_cart.click()
+            add_to_cart_found = True
+            print("Added to cart using resource-id")
+        except Exception:
+            pass
+            
+        # STRATEGY 2: Try using text attribute
+        if not add_to_cart_found:
+            try:
+                add_to_cart = self.driver.find_element(AppiumBy.ANDROID_UIAUTOMATOR, 
+                    'new UiSelector().text("Add to cart")')
+                add_to_cart.click()
+                add_to_cart_found = True
+                print("Added to cart using text selector")
+            except Exception:
+                pass
+                
+        # STRATEGY 3: Try using XPath with text
+        if not add_to_cart_found:
+            try:
+                add_to_cart = self.driver.find_element(AppiumBy.XPATH, 
+                    '//android.widget.Button[@text="Add to cart"]')
+                add_to_cart.click()
+                add_to_cart_found = True
+                print("Added to cart using XPath with text")
+            except Exception:
+                pass
+        
+        # Wait for cart update
+        time.sleep(2)
+        
+        if add_to_cart_found:
+            print("Product added to cart from product page")
+            return True
+        else:
+            print("Could not add product to cart from product page")
+            return False
+
     def test_search_with_rating_filter(self):
         """Search for wireless headphones and filter by 4+ star rating"""
         # First open the app and skip sign-in
@@ -424,18 +567,24 @@ class TestAppium(unittest.TestCase):
                 # ADDED: Extract product name and price from the panel before clicking
                 self.extract_product_info_from_panel(container)
                 
-                # Click on product container
+                # First try to add to cart directly from search results
+                added_to_cart = self.add_to_cart_from_search_results(container)
+                
+                # Click on product container to view details
                 container.click()
                 time.sleep(2)
                 
                 # Extract product details
                 self.extract_product_details()
                 
+                # If we couldn't add from search results, try from product page
+                if not added_to_cart:
+                    self.add_to_cart_from_product_page()
+                
                 # Go back to results page
                 self.driver.back()
                 time.sleep(1)
                 return
-                
             elif price_elements and len(price_elements) > 0:
                 # If we don't have at least 3, take whatever we found
                 target_price_element = price_elements[0]
@@ -452,18 +601,24 @@ class TestAppium(unittest.TestCase):
                 # ADDED: Extract product name and price from the panel before clicking
                 self.extract_product_info_from_panel(container)
                 
-                # Click on product container
+                # First try to add to cart directly from search results
+                added_to_cart = self.add_to_cart_from_search_results(container)
+                
+                # Click on product container to view details
                 container.click()
                 time.sleep(2)
                 
                 # Extract product details
                 self.extract_product_details()
                 
+                # If we couldn't add from search results, try from product page
+                if not added_to_cart:
+                    self.add_to_cart_from_product_page()
+                
                 # Go back to results page
                 self.driver.back()
                 time.sleep(1)
                 return
-                
             else:
                 print("Could not find price elements for products, trying alternative approach")
                 
@@ -487,7 +642,6 @@ class TestAppium(unittest.TestCase):
                     self.driver.back()
                     time.sleep(1)
                     return
-                
                 elif product_names and len(product_names) > 0:
                     # If we don't have at least 3, take what we have
                     target_product = product_names[0]
@@ -507,7 +661,7 @@ class TestAppium(unittest.TestCase):
         except Exception as e:
             print(f"Simplified strategy failed: {str(e)}")
             
-        # If our simplified approach failed, try to find the specific Amazon product
+        # If our simplified approach failed, try to find the specific Amazon product        
         try:
             print("Trying to find specific Amazon Basics product...")
             
@@ -566,7 +720,7 @@ class TestAppium(unittest.TestCase):
                     try:
                         # Look for price in parent elements
                         container = specific_product
-                        for _ in range(3):
+                        for _ in range(3):  # Try going up to 3 levels up in hierarchy
                             try:
                                 container = container.find_element(AppiumBy.XPATH, "./..")
                             except:
@@ -588,7 +742,6 @@ class TestAppium(unittest.TestCase):
                     tap_y = int(height * 0.3)
                     self.driver.tap([(width // 2, tap_y)], 200)
                     print(f"Tapped at coordinates ({width // 2}, {tap_y})")
-            
             time.sleep(2)
             
             # Check if we landed on a product page
@@ -602,10 +755,8 @@ class TestAppium(unittest.TestCase):
             
         print("Product extraction test completed")
 
-
 if __name__ == '__main__':
     unittest.main()
-
 
 
 '''

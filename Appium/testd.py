@@ -33,7 +33,7 @@ class TestAppium(unittest.TestCase):
     def open_app(self):
         """Open the app, select English language, and skip sign in"""
         # Wait for initial screen to load
-        time.sleep(3)
+        #time.sleep(3)
         
         # Handle language selection first
         try:
@@ -70,7 +70,7 @@ class TestAppium(unittest.TestCase):
         try:
             language_continue = self.driver.find_element(AppiumBy.ID, 'in.amazon.mShop.android.shopping:id/continue_button')
             language_continue.click()
-            time.sleep(2)
+            #time.sleep(2)
             print("Clicked continue after selecting language")
         except:
             print("Could not find continue button after language selection")
@@ -96,7 +96,7 @@ class TestAppium(unittest.TestCase):
                     continue_button = self.driver.find_element(AppiumBy.ID, 'in.amazon.mShop.android.shopping:id/sso_continue')
                     continue_button.click()
                     # Then look for skip options on the next screen
-                    time.sleep(2)
+                    #time.sleep(2)
                     try:
                         skip_button = self.driver.find_element(AppiumBy.XPATH, 
                             '//android.widget.Button[contains(@text, "Continue as guest") or contains(@text, "Skip")]')
@@ -105,7 +105,7 @@ class TestAppium(unittest.TestCase):
                         print("Continuing without explicit skip")
         
         # Wait for home page to load after skipping sign-in
-        time.sleep(3)
+        #time.sleep(3)
         print("App successfully opened with English language and sign-in skipped")
         
         # Verify we're on the home page
@@ -410,7 +410,7 @@ class TestAppium(unittest.TestCase):
                 
         # Wait for cart update
         if add_to_cart_found:
-            time.sleep(2)
+            #time.sleep(2)
             
             # Check for success indicators
             return self.check_if_added_to_cart() or add_to_cart_found
@@ -426,7 +426,7 @@ class TestAppium(unittest.TestCase):
         width = screen_size['width']
         height = screen_size['height']
         self.driver.swipe(width // 2, height * 3 // 4, width // 2, height // 4, 600)
-        time.sleep(1)
+        #time.sleep(1)
         
         add_to_cart_found = False
         
@@ -462,7 +462,7 @@ class TestAppium(unittest.TestCase):
                 pass
         
         # Wait for cart update
-        time.sleep(2)
+        #time.sleep(2)
         
         if add_to_cart_found:
             print("Product added to cart from product page")
@@ -486,7 +486,7 @@ class TestAppium(unittest.TestCase):
         print("Search completed without signing in")
         
         # Wait for search results to load
-        time.sleep(3)
+        #time.sleep(3)
         
         # Verify we're on the search results page 
         try:
@@ -497,7 +497,7 @@ class TestAppium(unittest.TestCase):
             
         # Now click on the "4 Stars and Up" filter button
         print("Attempting to click on '4 Stars and Up' filter...")
-        time.sleep(2)  # Give filters time to load
+        #time.sleep(2)  # Give filters time to load
         
         # We'll try multiple methods to find and click the rating filter
         try:
@@ -531,7 +531,7 @@ class TestAppium(unittest.TestCase):
                         print(f"Could not click on '4 Stars and Up' filter: {str(e)}")
         
         # Wait for filtered results to load
-        time.sleep(3)
+        #time.sleep(3)
         
         # Verify filter was applied (optional)
         try:
@@ -543,7 +543,7 @@ class TestAppium(unittest.TestCase):
         
         # Now extract details of one of the first products
         print("Attempting to select one of the first products...")
-        time.sleep(3)  # Wait for products to load
+        #time.sleep(3)  # Wait for products to load
         
         # Simple approach to get one of the first products
         try:
@@ -554,7 +554,7 @@ class TestAppium(unittest.TestCase):
             width = screen_size['width']
             height = screen_size['height']
             self.driver.swipe(width // 2, height * 2 // 3, width // 2, height // 3, 400)  # Smaller, gentler scroll
-            time.sleep(1)
+            #time.sleep(1)
             
             # Find products by looking for price elements (reliable indicator of products)
             price_elements = self.driver.find_elements(AppiumBy.XPATH, 
@@ -583,7 +583,7 @@ class TestAppium(unittest.TestCase):
                 
                 # Click on product container to view details
                 container.click()
-                time.sleep(2)
+                #time.sleep(2)
                 
                 # Extract product details
                 self.extract_product_details()
@@ -594,7 +594,7 @@ class TestAppium(unittest.TestCase):
                 
                 # Go back to results page
                 self.driver.back()
-                time.sleep(1)
+                #time.sleep(1)
                 return
             elif price_elements and len(price_elements) > 0:
                 # If we don't have at least 3, take whatever we found
@@ -617,7 +617,7 @@ class TestAppium(unittest.TestCase):
                 
                 # Click on product container to view details
                 container.click()
-                time.sleep(2)
+                #time.sleep(2)
                 
                 # Extract product details
                 self.extract_product_details()
@@ -628,7 +628,7 @@ class TestAppium(unittest.TestCase):
                 
                 # Go back to results page
                 self.driver.back()
-                time.sleep(1)
+                #time.sleep(1)
                 return
             else:
                 print("Could not find price elements for products, trying alternative approach")
@@ -644,14 +644,14 @@ class TestAppium(unittest.TestCase):
                     
                     # Click on the product
                     target_product.click()
-                    time.sleep(2)
+                    #time.sleep(2)
                     
                     # Extract product details
                     self.extract_product_details()
                     
                     # Go back to results page
                     self.driver.back()
-                    time.sleep(1)
+                    #time.sleep(1)
                     return
                 elif product_names and len(product_names) > 0:
                     # If we don't have at least 3, take what we have
@@ -660,14 +660,14 @@ class TestAppium(unittest.TestCase):
                     
                     # Click on the product
                     target_product.click()
-                    time.sleep(2)
+                    #time.sleep(2)
                     
                     # Extract product details
                     self.extract_product_details()
                     
                     # Go back to results page
                     self.driver.back()
-                    time.sleep(1)
+                    #time.sleep(1)
                     return
         except Exception as e:
             print(f"Simplified strategy failed: {str(e)}")
@@ -683,7 +683,7 @@ class TestAppium(unittest.TestCase):
             
             # Scroll to find the product
             self.driver.swipe(width // 2, height * 3 // 4, width // 2, height // 4, 600)
-            time.sleep(2)
+            #time.sleep(2)
             
             # Try to find the specific Amazon Basics product using UiAutomator
             try:
@@ -753,14 +753,14 @@ class TestAppium(unittest.TestCase):
                     tap_y = int(height * 0.3)
                     self.driver.tap([(width // 2, tap_y)], 200)
                     print(f"Tapped at coordinates ({width // 2}, {tap_y})")
-            time.sleep(2)
+            #time.sleep(2)
             
             # Check if we landed on a product page
             self.extract_product_details()
             
             # Go back
             self.driver.back()
-            time.sleep(1)
+            #time.sleep(1)
         except Exception as e:
             print(f"Fallback approach failed: {str(e)}")
             

@@ -27,7 +27,7 @@ class TestAppium(unittest.TestCase):
     def tearDown(self):
         # if self.driver:
         #     self.driver.quit()
-        print("tear down")
+        print("Test completed")
 
     # Utility methods and setup
     def open_app(self):
@@ -307,61 +307,55 @@ class TestAppium(unittest.TestCase):
             return product_info
 
     def check_if_added_to_cart(self):
-        """Check if a product was successfully added to cart"""
+        """Check if a product was successfully added to cart and return time of detection"""
         try:
             # Look for confirmation elements
             confirmations = self.driver.find_elements(AppiumBy.XPATH, 
                 '//android.widget.TextView[contains(@text, "Added to") or contains(@text, "added to cart") or contains(@text, "Cart")]')
             
             if confirmations and len(confirmations) > 0:
-                return True
+                # Return both success status and the time when we detected it
+                return True, time.time()
         except Exception:
             pass
         
-        return False
-    
+        return False, None
+
     def add_to_cart_from_search_results(self, container):
-        """
-        Add a product to cart directly from search results using the specific button properties
-        provided from Appium Inspector.
-        
-        Args:
-            container: The product container element from search results
-        
-        Returns:
-            bool: True if successfully added to cart, False otherwise
-        """
-        # Minimize print statements as requested
+        print("\nMeasuring Add to Cart time...")
         add_to_cart_found = False
-        
+        # Start timing for add to cart operation
+        add_cart_start_time = time.time()
+        add_cart_end_time = 0
         # STRATEGY 1: Direct use of resource-id from the provided button data
-        try:
-            add_to_cart = container.find_element(AppiumBy.ID, 'a-autoid-21-announce')
-            add_to_cart.click()
-            add_to_cart_found = True
-        except Exception:
-            pass
-            
+        # try:
+        #     add_to_cart = container.find_element(AppiumBy.ID, 'a-autoid-21-announce')
+        #     add_to_cart.click()
+        #     add_to_cart_found = True
+        # except Exception:
+        #     pass
         # STRATEGY 2: Finding button by text attribute (from provided data)
-        if not add_to_cart_found:
-            try:
-                add_to_cart = container.find_element(AppiumBy.XPATH, 
-                    './/android.widget.Button[@text="Add to cart"]')
-                add_to_cart.click()
-                add_to_cart_found = True
-            except Exception:
-                pass
-                
+        # if not add_to_cart_found:
+        #     print('Strat 2')
+        #     try:
+        #         add_to_cart = container.find_element(AppiumBy.XPATH, 
+        #             './/android.widget.Button[@text="Add to cart"]')
+        #         add_to_cart.click()
+        #         add_to_cart_found = True
+        #     except Exception:
+        #         pass
         # STRATEGY 3: Using the bounds data to find elements in that area
         if not add_to_cart_found:
+            print('Strat 3')
             try:
                 # Using the bounds from provided button data: [464,2050][1039,2142]
                 buttons_in_area = self.driver.find_elements(AppiumBy.XPATH,
                     '//android.widget.Button[@clickable="true"]')
-                
                 for button in buttons_in_area:
                     try:
                         if button.text and "add to cart" in button.text.lower():
+                            # Start timing AFTER we find the button but BEFORE clicking
+                            add_cart_start_time = time.time()
                             button.click()
                             add_to_cart_found = True
                             break
@@ -369,18 +363,17 @@ class TestAppium(unittest.TestCase):
                         continue
             except Exception:
                 pass
-                
         # STRATEGY 4: Try finding button near the product price
         if not add_to_cart_found:
+            print('Strat 4')
             try:
                 price_elements = container.find_elements(AppiumBy.XPATH,
                     './/android.widget.TextView[contains(@text, "₹")]')
-                
                 if price_elements and len(price_elements) > 0:
                     price_container = price_elements[0]
                     # Try to find buttons near the price
                     parent = price_container
-                    for _ in range(3): 
+                    for _ in range(3):
                         try:
                             parent = parent.find_element(AppiumBy.XPATH, "./..")
                             buttons = parent.find_elements(AppiumBy.CLASS_NAME, "android.widget.Button")
@@ -388,77 +381,96 @@ class TestAppium(unittest.TestCase):
                                 if button.text and "add to cart" in button.text.lower():
                                     button.click()
                                     add_to_cart_found = True
+                                    add_cart_end_time = time.time()
                                     break
                         except:
                             continue
-                        
                         if add_to_cart_found:
                             break
             except Exception:
                 pass
-                
-        # Wait for cart update
+        
+        # Check for confirmation without sleeping
+        success = False
         if add_to_cart_found:
-            time.sleep(2)
-            
-            # Check for success indicators
-            return self.check_if_added_to_cart() or add_to_cart_found
+            try:
+                # Wait for cart count to change or confirmation message to appear
+                for _ in range(10):  # Try for up to 10 cycles (equivalent to ~2 seconds)
+                    if self.check_if_added_to_cart():
+                        success = True
+                        break
+                    # Very short sleep to prevent CPU overload
+                    time.sleep(0.2)
+            except Exception:
+                pass
         
-        return False
-        
+        # Calculate time taken for add to cart operation
+        add_cart_end_time = time.time()  # Make sure we have a valid end time
+        add_cart_time = add_cart_end_time - add_cart_start_time
+        print(f"Add to Cart Time: {add_cart_time:.2f} seconds")
+        if success or add_to_cart_found:
+            print("Product added to cart successfully")
+        return success or add_to_cart_found
+
     def add_to_cart_from_product_page(self):
-        """Add the current product to cart from product details page"""
-        print("\nAttempting to add product to cart from product page...")
-        
+        """Add the current product to cart from product details page and measure time"""
+        print("\nMeasuring Add to Cart time from product page...")
         # Scroll down to make sure Add to Cart button is visible
         screen_size = self.driver.get_window_size()
         width = screen_size['width']
         height = screen_size['height']
         self.driver.swipe(width // 2, height * 3 // 4, width // 2, height // 4, 600)
-        time.sleep(1)
-        
+        success = False
         add_to_cart_found = False
+        add_cart_start_time = 0
+        add_cart_end_time = 0
         
-        # STRATEGY 1: Try using resource-id
+        # STRATEGY 1: Direct use of resource-id from the provided button data
         try:
-            add_to_cart = self.driver.find_element(AppiumBy.ID, 'a-autoid-21-announce')
+            add_to_cart = self.driver.find_element(AppiumBy.ID, 'add-to-cart-button')
+            # Start timing RIGHT BEFORE clicking
+            add_cart_start_time = time.time()
             add_to_cart.click()
             add_to_cart_found = True
             print("Added to cart using resource-id")
         except Exception:
             pass
-            
-        # STRATEGY 2: Try using text attribute
-        if not add_to_cart_found:
-            try:
-                add_to_cart = self.driver.find_element(AppiumBy.ANDROID_UIAUTOMATOR, 
-                    'new UiSelector().text("Add to cart")')
-                add_to_cart.click()
-                add_to_cart_found = True
-                print("Added to cart using text selector")
-            except Exception:
-                pass
-                
-        # STRATEGY 3: Try using XPath with text
+        
+        # STRATEGY 2: Finding button by text attribute (from provided data)
         if not add_to_cart_found:
             try:
                 add_to_cart = self.driver.find_element(AppiumBy.XPATH, 
                     '//android.widget.Button[@text="Add to cart"]')
+                # Start timing RIGHT BEFORE clicking
+                add_cart_start_time = time.time()
                 add_to_cart.click()
                 add_to_cart_found = True
                 print("Added to cart using XPath with text")
             except Exception:
                 pass
         
-        # Wait for cart update
-        time.sleep(2)
-        
+        # Check for confirmation without sleeping
+        success = False
         if add_to_cart_found:
-            print("Product added to cart from product page")
-            return True
-        else:
-            print("Could not add product to cart from product page")
-            return False
+            try:
+                # Wait for cart count to change or confirmation message to appear
+                for _ in range(20):  # Try for up to 4 seconds (20 * 0.2)
+                    success, end_time = self.check_if_added_to_cart()
+                    if success:
+                        add_cart_end_time = end_time
+                        break
+                    # Very short sleep to prevent CPU overload
+                    time.sleep(0.2)
+            except Exception:
+                pass
+        
+        # Calculate time taken for add to cart operation
+        add_cart_end_time = time.time()  # Make sure we have a valid end time
+        add_cart_time = add_cart_end_time - add_cart_start_time
+        print(f"Add to Cart Time from product page: {add_cart_time:.2f} seconds")
+        if success or add_to_cart_found:
+            print("Product added to cart successfully")
+        return success or add_to_cart_found
 
     def test_search_with_rating_filter(self):
         """Search for wireless headphones and filter by 4+ star rating"""
@@ -466,84 +478,114 @@ class TestAppium(unittest.TestCase):
         if not self.open_app():
             print("Failed to properly open the app, attempting search anyway")
         
-        # Now proceed with search
+        # Measure search time
+        print("\nMeasuring search time for 'Wireless Headphones'...")
+        
+        # Start search process
         search_bar = self.driver.find_element(AppiumBy.ID, 'in.amazon.mShop.android.shopping:id/chrome_search_hint_view')
         search_bar.click()
         second_search_bar = self.driver.find_element(AppiumBy.ID, 'in.amazon.mShop.android.shopping:id/rs_search_src_text')
         second_search_bar.send_keys("Wireless Headphones")
-        self.driver.press_keycode(66, 0, 0)
-        print("Search completed without signing in")
-        
-        # Wait for search results to load
-        time.sleep(3)
-        
-        # Verify we're on the search results page 
-        try:
-            results_element = self.driver.find_element(AppiumBy.ID, 'in.amazon.mShop.android.shopping:id/rs_results_count')
-            print(f"Search results found: {results_element.text}")
-        except:
-            print("Continued to search results page")
-            
-        # Now click on the "4 Stars and Up" filter button
-        print("Attempting to click on '4 Stars and Up' filter...")
-        time.sleep(2)  # Give filters time to load
-        
-        # We'll try multiple methods to find and click the rating filter
-        try:
-            # Try using ACCESSIBILITY_ID first (content-desc attribute)
-            rating_filter = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, "4 Stars and Up Add filter")
-            rating_filter.click()
-            print("Clicked '4 Stars and Up' filter using ACCESSIBILITY_ID")
-        except:
+        # Start timing AFTER we've entered the search term and RIGHT BEFORE pressing Enter
+        search_start_time = time.time()
+        self.driver.press_keycode(66, 0, 0)  # Press Enter
+        search_end_time = time.time()
+        # Wait for search results to appear without using sleep
+        search_complete = False
+        for _ in range(30):  # Increased timeout to 6 seconds max (30 * 0.2)
             try:
-                # Try XPath with content-desc as alternative
-                rating_filter = self.driver.find_element(AppiumBy.XPATH, 
-                    '//android.view.View[@content-desc="4 Stars and Up Add filter"]')
-                rating_filter.click()
-                print("Clicked '4 Stars and Up' filter using XPath with content-desc")
+                results_element = self.driver.find_element(AppiumBy.ID, 'in.amazon.mShop.android.shopping:id/rs_results_count')
+                search_complete = True
+                break
             except:
                 try:
-                    # Try using resource-id as fallback
-                    rating_filter = self.driver.find_element(AppiumBy.XPATH, 
+                    # Alternative: check if any product elements are present
+                    self.driver.find_element(AppiumBy.XPATH, '//android.widget.TextView[contains(@text, "₹")]')
+                    search_complete = True
+                    break
+                except:
+                    pass
+            time.sleep(0.2)  # Short polling interval
+        # Calculate search time - only if we detected search completion
+        if search_complete:
+            search_end_time = time.time()
+            search_time = search_end_time - search_start_time
+            print(f"Search Time: {search_time:.2f} seconds")
+        else:
+            print("Could not accurately measure search time - results detection failed")
+        
+        # Measure filter time
+        print("\nMeasuring filter time for '4 Stars and Up'...")
+        
+        # Try multiple methods to find the rating filter
+        filter_element = None
+        try:
+            filter_element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, "4 Stars and Up Add filter")
+        except:
+            try:
+                filter_element = self.driver.find_element(AppiumBy.XPATH, 
+                    '//android.view.View[@content-desc="4 Stars and Up Add filter"]')
+            except:
+                try:
+                    filter_element = self.driver.find_element(AppiumBy.XPATH, 
                         '//android.view.View[@resource-id="1318476031"]')
-                    rating_filter.click()
-                    print("Clicked filter using resource-id")
+                except:
+                    pass
+        
+        # If we found the filter element, click it and measure response time
+        filter_clicked = False
+        if filter_element:
+            # Start timing RIGHT BEFORE clicking the filter button
+            filter_start_time = time.time()
+            filter_element.click()
+            filter_clicked = True
+        else:
+            # Try using bounds as last resort
+            try:
+                center_x = (299 + 619) // 2
+                center_y = (371 + 455) // 2
+                filter_start_time = time.time()
+                self.driver.tap([(center_x, center_y)], 100)
+                filter_clicked = True
+            except Exception as e:
+                print(f"Could not click on '4 Stars and Up' filter: {str(e)}")
+        
+        # Wait for filtered results to load without blocking sleep
+        filter_complete = False
+        if filter_clicked:
+            for _ in range(30):  # Increased timeout to 6 seconds max
+                try:
+                    # Check if results count has updated
+                    filtered_results = self.driver.find_element(AppiumBy.ID, 'in.amazon.mShop.android.shopping:id/rs_results_count')
+                    filter_complete = True
+                    break
                 except:
                     try:
-                        # Try using bounds as last resort
-                        # Tap in the center of the provided bounds [299,371][619,455]
-                        center_x = (299 + 619) // 2
-                        center_y = (371 + 455) // 2
-                        self.driver.tap([(center_x, center_y)], 100)
-                        print(f"Tapped at coordinates ({center_x}, {center_y}) for the filter")
-                    except Exception as e:
-                        print(f"Could not click on '4 Stars and Up' filter: {str(e)}")
-        
-        # Wait for filtered results to load
-        time.sleep(3)
-        
-        # Verify filter was applied (optional)
-        try:
-            # Look for active filter indicators or updated results
-            filtered_results = self.driver.find_element(AppiumBy.ID, 'in.amazon.mShop.android.shopping:id/rs_results_count')
-            print(f"Filtered results: {filtered_results.text}")
-        except:
-            print("Filter may have been applied, but couldn't verify results count")
+                        # Alternative: check for filter chips or updated product listings
+                        self.driver.find_element(AppiumBy.XPATH, 
+                            '//android.view.View[contains(@content-desc, "4 Stars")]')
+                        filter_complete = True
+                        break
+                    except:
+                        pass
+                time.sleep(0.2)  # Short polling interval
+            # Calculate filter time - only if we detected filter completion
+            if filter_complete:
+                filter_end_time = time.time()
+                filter_time = filter_end_time - filter_start_time
+                print(f"Filter Time: {filter_time:.2f} seconds")
+            else:
+                print("Could not accurately measure filter time - results detection failed")
         
         # Now extract details of one of the first products
-        print("Attempting to select one of the first products...")
-        time.sleep(3)  # Wait for products to load
-        
+        print("\nSelecting a product...")
         # Simple approach to get one of the first products
         try:
-            print("SIMPLIFIED STRATEGY: Looking for one of the first products...")
-            
             # Minimal scroll to get past headers if needed
             screen_size = self.driver.get_window_size()
             width = screen_size['width']
             height = screen_size['height']
-            self.driver.swipe(width // 2, height * 2 // 3, width // 2, height // 3, 400)  # Smaller, gentler scroll
-            time.sleep(1)
+            self.driver.swipe(width // 2, height * 2 // 3, width // 2, height // 3, 400)
             
             # Find products by looking for price elements (reliable indicator of products)
             price_elements = self.driver.find_elements(AppiumBy.XPATH, 
@@ -554,8 +596,6 @@ class TestAppium(unittest.TestCase):
                 target_index = 2  # The 3rd price element (index 2) - more likely to be a real product
                 target_price_element = price_elements[target_index]
                 
-                print(f"Selected the {target_index+1}st/nd/rd product by price element")
-                
                 # Try to find the container element to click
                 container = target_price_element
                 for _ in range(3):  # Try going up to 3 levels up in hierarchy
@@ -564,7 +604,7 @@ class TestAppium(unittest.TestCase):
                     except:
                         break
                 
-                # ADDED: Extract product name and price from the panel before clicking
+                # Extract product name and price from the panel before clicking
                 self.extract_product_info_from_panel(container)
                 
                 # First try to add to cart directly from search results
@@ -572,7 +612,16 @@ class TestAppium(unittest.TestCase):
                 
                 # Click on product container to view details
                 container.click()
-                time.sleep(2)
+                # Wait for product details to load without using sleep
+                for _ in range(10):
+                    try:
+                        # Check for elements that indicate product details page is loaded
+                        self.driver.find_element(AppiumBy.XPATH, 
+                            '//android.view.View[string-length(@text) > 40]')
+                        break
+                    except:
+                        pass
+                    time.sleep(0.2)
                 
                 # Extract product details
                 self.extract_product_details()
@@ -583,177 +632,31 @@ class TestAppium(unittest.TestCase):
                 
                 # Go back to results page
                 self.driver.back()
-                time.sleep(1)
                 return
             elif price_elements and len(price_elements) > 0:
-                # If we don't have at least 3, take whatever we found
+                # Similar process for first available product
                 target_price_element = price_elements[0]
-                print("Selected the first available product by price")
                 
-                # Try to find the container element to click
-                container = target_price_element
-                for _ in range(3):  # Try going up to 3 levels up in hierarchy
+                # Extract product info and add to cart as above
+                self.extract_product_info_from_panel(target_price_element)
+                added_to_cart = self.add_to_cart_from_search_results(target_price_element)
+                target_price_element.click()
+                for _ in range(10):
                     try:
-                        container = container.find_element(AppiumBy.XPATH, "./..")
-                    except:
+                        self.driver.find_element(AppiumBy.XPATH, 
+                            '//android.view.View[string-length(@text) > 40]')
                         break
-                
-                # ADDED: Extract product name and price from the panel before clicking
-                self.extract_product_info_from_panel(container)
-                
-                # First try to add to cart directly from search results
-                added_to_cart = self.add_to_cart_from_search_results(container)
-                
-                # Click on product container to view details
-                container.click()
-                time.sleep(2)
-                
-                # Extract product details
+                    except:
+                        pass
+                    time.sleep(0.2)
                 self.extract_product_details()
-                
-                # If we couldn't add from search results, try from product page
                 if not added_to_cart:
                     self.add_to_cart_from_product_page()
-                
-                # Go back to results page
                 self.driver.back()
-                time.sleep(1)
                 return
-            else:
-                print("Could not find price elements for products, trying alternative approach")
-                
-                # Alternative approach - look for text elements that might be product names
-                product_names = self.driver.find_elements(AppiumBy.XPATH, 
-                    '//android.widget.TextView[string-length(@text) > 20 and not(contains(@text, "Sponsored"))]')
-                
-                if product_names and len(product_names) >= 3:
-                    # Select the 3rd product name (index 2) to avoid headers
-                    target_product = product_names[2]
-                    print(f"Selected the 3rd product by name: {target_product.text[:30]}...")
-                    
-                    # Click on the product
-                    target_product.click()
-                    time.sleep(2)
-                    
-                    # Extract product details
-                    self.extract_product_details()
-                    
-                    # Go back to results page
-                    self.driver.back()
-                    time.sleep(1)
-                    return
-                elif product_names and len(product_names) > 0:
-                    # If we don't have at least 3, take what we have
-                    target_product = product_names[0]
-                    print(f"Selected the first available product by name: {target_product.text[:30]}...")
-                    
-                    # Click on the product
-                    target_product.click()
-                    time.sleep(2)
-                    
-                    # Extract product details
-                    self.extract_product_details()
-                    
-                    # Go back to results page
-                    self.driver.back()
-                    time.sleep(1)
-                    return
         except Exception as e:
-            print(f"Simplified strategy failed: {str(e)}")
-            
-        # If our simplified approach failed, try to find the specific Amazon product        
-        try:
-            print("Trying to find specific Amazon Basics product...")
-            
-            # First, scroll to make sure more products are visible
-            screen_size = self.driver.get_window_size()
-            width = screen_size['width']
-            height = screen_size['height']
-            
-            # Scroll to find the product
-            self.driver.swipe(width // 2, height * 3 // 4, width // 2, height // 4, 600)
-            time.sleep(2)
-            
-            # Try to find the specific Amazon Basics product using UiAutomator
-            try:
-                specific_product = self.driver.find_element(
-                    AppiumBy.ANDROID_UIAUTOMATOR,
-                    'new UiSelector().text("Sponsored Ad - Amazon Basics USB Wireless Keyboard and Mouse Set with Nano Receiver")'
-                )
-                print("Found Amazon Basics product using UiAutomator selector")
-                
-                # Find price nearby this product
-                try:
-                    # Try to find price in the parent container
-                    container = specific_product
-                    for _ in range(3):  # Try going up to 3 levels up in hierarchy
-                        try:
-                            container = container.find_element(AppiumBy.XPATH, "./..")
-                        except:
-                            break
-                    
-                    # ADDED: Extract product name and price using our new method
-                    self.extract_product_info_from_panel(container)
-                    
-                    # Look for price within this container
-                    price_element = container.find_element(AppiumBy.XPATH, 
-                        './/android.widget.TextView[contains(@text, "₹")]')
-                    print(f"Product price: {price_element.text}")
-                except:
-                    print("Found product but couldn't extract price")
-                
-                # Click on the product
-                specific_product.click()
-                print("Clicked on the specific Amazon Basics product")
-                
-            except Exception as e:
-                print(f"UiAutomator approach failed: {str(e)}")
-                try:
-                    # Try XPath as fallback
-                    specific_product = self.driver.find_element(
-                        AppiumBy.XPATH,
-                        '//android.widget.TextView[@text="Sponsored Ad - Amazon Basics USB Wireless Keyboard and Mouse Set with Nano Receiver"]'
-                    )
-                    print("Found Amazon Basics product using XPath selector")
-                    
-                    # Try to extract price
-                    try:
-                        # Look for price in parent elements
-                        container = specific_product
-                        for _ in range(3):  # Try going up to 3 levels up in hierarchy
-                            try:
-                                container = container.find_element(AppiumBy.XPATH, "./..")
-                            except:
-                                break
-                        
-                        price_element = container.find_element(AppiumBy.XPATH, 
-                            './/android.widget.TextView[contains(@text, "₹")]')
-                        print(f"Product price: {price_element.text}")
-                    except:
-                        print("Found product but couldn't extract price")
-                    
-                    # Click on the product
-                    specific_product.click()
-                    print("Clicked on the specific Amazon Basics product")
-                    
-                except Exception as e:
-                    print(f"XPath approach failed: {str(e)}, falling back to generic tap")
-                    # Fall back to the original tap approach if both specific approaches fail
-                    tap_y = int(height * 0.3)
-                    self.driver.tap([(width // 2, tap_y)], 200)
-                    print(f"Tapped at coordinates ({width // 2}, {tap_y})")
-            time.sleep(2)
-            
-            # Check if we landed on a product page
-            self.extract_product_details()
-            
-            # Go back
-            self.driver.back()
-            time.sleep(1)
-        except Exception as e:
-            print(f"Fallback approach failed: {str(e)}")
-            
-        print("Product extraction test completed")
+            print(f"Error selecting product: {e}")
+        print("Performance measurement completed")
 
 if __name__ == '__main__':
     unittest.main()
